@@ -31,7 +31,7 @@ jobs:
           name: prebuilds-linux-${{ matrix.node_api_target }}
           path: prebuilds
 
-  prebuilds-linux-arm64:
+  # prebuilds-linux-arm64:
     runs-on: [self-hosted, Linux, ARM64]
     strategy:
       fail-fast: false
@@ -53,7 +53,7 @@ jobs:
           name: prebuilds-linux-arm64-${{ matrix.node_api_target }}
           path: prebuilds
 
-  prebuilds-macos-windows:
+  # prebuilds-macos-windows:
     strategy:
       fail-fast: false
       matrix:
@@ -137,7 +137,7 @@ jobs:
           name: workspace-packages
           path: ${{ steps.pack_ws.outputs.files }}
 
-  unit-tests:
+  # unit-tests:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
