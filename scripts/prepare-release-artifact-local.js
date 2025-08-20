@@ -2,6 +2,7 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 const path = require('path');
 const { Octokit } = require('octokit');
+const util = require('util'); 
 
 const { version } = require('../package.json');
 
@@ -18,10 +19,17 @@ const GITHUB_REPO = 'splunk-otel-js';
 // 3. create dummy commits and push to forked repo
 // for entire hash: git log --format="%H" -n 1
 // for description of last commit: git log --oneline -n 1
-// commit message: "feat(ci): add local testing for GitLab scripts"
-const CI_COMMIT_SHA = '1caac13f447918e5a4b551f40a19eed7e31a2041'; // ostatni commit 
+// commit message: "..."
+const CI_COMMIT_SHA = '...'; 
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
+}
+
+function dbg(label, data) {
+  console.log(`\n\u001b[36m[${label}]\u001b[0m`);
+  if (data !== undefined) {
+    console.log(util.inspect(data, { depth: null, colors: true }));
+  }
 }
 
 async function fetchWorkflowRun(context) {
@@ -29,6 +37,7 @@ async function fetchWorkflowRun(context) {
     owner: context.owner,
     repo: context.repo,
   });
+  dbg('fetchWorkflowRun:response', workflows);
 
   const runs = workflows.workflow_runs;
 // add commit sha 
@@ -38,6 +47,7 @@ async function fetchWorkflowRun(context) {
   if (run === undefined) {
     throw new Error(`Workflow not found for commit ${commitSha}`);
   }
+  dbg('fetchWorkflowRun:match', run);
 
   return run;
 }
@@ -75,6 +85,7 @@ async function getBuildArtifact() {  // maybe my personal access token
   console.log('waiting for workflow results');
 
   const run = await waitForWorkflowRun({ octokit, owner, repo });
+  dbg('getBuildArtifact:workflowRun', run);
 
   console.log('found finished workflow run', run);
 
@@ -88,11 +99,15 @@ async function getBuildArtifact() {  // maybe my personal access token
 
   console.log('found artifacts for workflow', artifacts);
 
+  dbg('getBuildArtifact:artifactsList', artifacts);
+
   const packageArtifact = artifacts.artifacts.find(artifact => artifact.name === tgzName);
 
   if (packageArtifact === undefined) {
     throw new Error(`unable to find artifact named ${tgzName}`);
   }
+
+  dbg('getBuildArtifact:chosenArtifact', packageArtifact);
 
   const dlArtifact = await octokit.rest.actions.downloadArtifact({
     owner,
@@ -102,13 +117,14 @@ async function getBuildArtifact() {  // maybe my personal access token
   });
 
   console.log('downloaded', dlArtifact);
+  dbg('getBuildArtifact:downloadResponse', dlArtifact);
 
   const tempFile = 'artifact-temp.zip';
 
   console.log(`writing content to ${tempFile} and unzipping`);
 
   fs.writeFileSync(tempFile, Buffer.from(dlArtifact.data));
-
+  dbg('getBuildArtifact:unzip', { cmd: `unzip -o ${tempFile}` });
   execSync(`unzip -o ${tempFile}`);
 
   const exists = fs.existsSync(packageArtifact.name);

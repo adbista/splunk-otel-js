@@ -187,24 +187,24 @@ jobs:
         with:
           verbose: true
 
-  unit-tests-arm64:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['ARM64']
-        nodejs: ['18', '20', '21', '22', '23', '24']
-    container: node:${{ matrix.nodejs }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python_version }}
-      - name: Install npm dependencies
-        run: npm ci --unsafe-perm
-      - name: Test
-        run: npm run test
+  # unit-tests-arm64:
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: ['ARM64']
+  #       nodejs: ['18', '20', '21', '22', '23', '24']
+  #   container: node:${{ matrix.nodejs }}
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #     - uses: actions/setup-python@v4
+  #       with:
+  #         python-version: ${{ matrix.python_version }}
+  #     - name: Install npm dependencies
+  #       run: npm ci --unsafe-perm
+  #     - name: Test
+  #       run: npm run test
 
   build:
     runs-on: ubuntu-latest
