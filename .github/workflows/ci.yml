@@ -134,7 +134,7 @@ jobs:
       - name: Upload workspace packages
         uses: actions/upload-artifact@v4
         with:
-          name: workspace-packages.tgz
+          name: workspace-packages
           path: ${{ steps.pack_ws.outputs.files }}
 
   # unit-tests:
