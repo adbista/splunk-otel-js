@@ -9,6 +9,7 @@ const { version } = require('../package.json');
 const WORKFLOW_TIMEOUT_MS = 15 * 60 * 1000;
 
 const PUBLIC_ARTIFACTS_TOKEN = process.env.PUBLIC_ARTIFACTS_TOKEN ?? 'NOT_SET';
+console.log(`Using PUBLIC_ARTIFACTS_TOKEN: ${PUBLIC_ARTIFACTS_TOKEN}`);
 const GITHUB_OWNER = 'adbista'; 
 const GITHUB_REPO = 'splunk-otel-js'; 
 
@@ -20,7 +21,7 @@ const GITHUB_REPO = 'splunk-otel-js';
 // for entire hash: git log --format="%H" -n 1
 // for description of last commit: git log --oneline -n 1
 // commit message: "..."
-const CI_COMMIT_SHA = 'c2fdc845ccc9366d2bc49ea9026053c23252d624'; 
+const CI_COMMIT_SHA = 'a72b5c327db3cb54a583a2a17d4df5978a846d91'; 
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
@@ -30,7 +31,6 @@ async function fetchWorkflowRun(context) {
     owner: context.owner,
     repo: context.repo,
   });
-  console.log('fetchWorkflowRun:response', workflows);
 
   const runs = workflows.workflow_runs;
 // add commit sha 
@@ -40,7 +40,6 @@ async function fetchWorkflowRun(context) {
   if (run === undefined) {
     throw new Error(`Workflow not found for commit ${commitSha}`);
   }
-  console.log('fetchWorkflowRun:match', run);
 
   return run;
 }
@@ -70,6 +69,49 @@ async function waitForWorkflowRun(context) {
   }
 }
 
+async function downloadArtifact({ octokit, owner, repo, runId, artifactName }) {
+  const { data: artifacts } = await octokit.rest.actions.listWorkflowRunArtifacts({
+    owner,
+    repo,
+    run_id: runId,
+    name: artifactName,
+  });
+
+  const artifact = artifacts.artifacts.find(artifact => artifact.name === artifactName);
+  
+  if (artifact === undefined) {
+    throw new Error(`unable to find artifact named ${artifactName}`);
+  }
+
+  const downloadedArtifact = await octokit.rest.actions.downloadArtifact({
+    owner,
+    repo,
+    artifact_id: artifact.id,
+    archive_format: 'zip',
+  });
+  
+  return {
+    name: artifact.name,
+    data: downloadedArtifact.data
+  };
+}
+
+function extractArtifact(artifact, tempFileName) {
+  console.log(`writing content to ${tempFileName} and unzipping`);
+  fs.writeFileSync(tempFileName, Buffer.from(artifact.data));
+  execSync(`unzip -o ${tempFileName}`);
+  
+  const exists = fs.existsSync(artifact.name);
+  console.log(`${artifact.name} was extracted: ${exists}`);
+  
+  if (!exists) {
+    throw new Error(`${artifact.name} was not found after extraction`);
+  }
+  
+  fs.unlinkSync(tempFileName);
+  return artifact.name;
+}
+
 async function getBuildArtifact() {  // maybe my personal access token
   const octokit = new Octokit({ auth: PUBLIC_ARTIFACTS_TOKEN });
   const owner = GITHUB_OWNER;
@@ -84,98 +126,62 @@ async function getBuildArtifact() {  // maybe my personal access token
   const tgzName = `splunk-otel-${version}.tgz`
   const workspacePackageName = `workspace-packages`;
 
-  const { data: splunkOtelArtifacts } = await octokit.rest.actions.listWorkflowRunArtifacts({
-    owner,
-    repo,
-    run_id: run.id,
-    name: tgzName,
+  const splunkOtelArtifact = await downloadArtifact({ 
+    octokit, 
+    owner, 
+    repo, 
+    runId: run.id, 
+    artifactName: tgzName 
+  });
+  const workspaceArtifact = await downloadArtifact({ 
+    octokit, 
+    owner, 
+    repo, 
+    runId: run.id, 
+    artifactName: workspacePackageName 
   });
 
-  const { data: workspacePackageArtifacts } = await octokit.rest.actions.listWorkflowRunArtifacts({
-    owner,
-    repo,
-    run_id: run.id,
-    name: workspacePackageName,
-  });
-
-  const splunkOtelPackageArtifact = splunkOtelArtifacts.artifacts.find(artifact => artifact.name === tgzName);
-  const workspacePackageArtifact = workspacePackageArtifacts.artifacts.find(artifact => artifact.name === workspacePackageName);
-
-  if (splunkOtelPackageArtifact === undefined) {
-    throw new Error(`unable to find artifact named ${tgzName}`);
-  }
-  console.log('splunkOtelPackageArtifact:', splunkOtelPackageArtifact);
-  if (workspacePackageArtifact === undefined) {
-    throw new Error(`unable to find artifact named ${workspacePackageName}`);
-  }
-  console.log('workspacePackageArtifact:', workspacePackageArtifact);
-
-  const SplunkOtelDlArtifact = await octokit.rest.actions.downloadArtifact({
-    owner,
-    repo,
-    artifact_id: splunkOtelPackageArtifact.id,
-    archive_format: 'zip',
-  });
-
-  const WorkspacePackageDlArtifact = await octokit.rest.actions.downloadArtifact({
-    owner,
-    repo,
-    artifact_id: workspacePackageArtifact.id,
-    archive_format: 'zip',
-  });
-
-  console.log('downloaded artifacts successfully');
-  
-  // Extract splunk-otel package
+  console.log('downloaded', splunkOtelArtifact);
+  // Extract Splunk Otel package
   const splunkOtelTempFile = 'splunk-otel-artifact-temp.zip';
   console.log(`writing content to ${splunkOtelTempFile} and unzipping`);
-  fs.writeFileSync(splunkOtelTempFile, Buffer.from(SplunkOtelDlArtifact.data));
+  fs.writeFileSync(splunkOtelTempFile, Buffer.from(splunkOtelArtifact.data));
   execSync(`unzip -o ${splunkOtelTempFile}`);
 
-  // Extract workspace packages to temp folder
-  const tempPackagesDir = 'temp-packages';
-  fs.mkdirSync(tempPackagesDir, { recursive: true });
-  
-  const workspaceTempFile = 'workspace-package-artifact-temp.zip';
-  console.log(`writing workspace content to ${workspaceTempFile} and unzipping to ${tempPackagesDir}`);
-  fs.writeFileSync(workspaceTempFile, Buffer.from(WorkspacePackageDlArtifact.data));
-  execSync(`unzip -o ${workspaceTempFile} -d ${tempPackagesDir}`);
-
-  console.log('Files after extraction:');
-  console.log('Root directory:', fs.readdirSync('.'));
-  console.log('Temp packages directory:', fs.readdirSync(tempPackagesDir));
-
-  // Check splunk-otel package
-  const splunkOtelExists = fs.existsSync(splunkOtelPackageArtifact.name);
-  console.log(`${splunkOtelPackageArtifact.name} was extracted: ${splunkOtelExists}`);
-
-  // Find workspace .tgz files in temp directory
-  const workspaceFiles = fs.readdirSync(tempPackagesDir);
-  const workspaceTgzFiles = workspaceFiles.filter(file => file.endsWith('.tgz'));
-  console.log(`Found workspace .tgz files: ${workspaceTgzFiles}`);
-
+  const splunkOtelExists = fs.existsSync(splunkOtelArtifact.name);
+  console.log(`${splunkOtelArtifact.name} was extracted: ${splunkOtelExists}`);
   if (!splunkOtelExists) {
-    throw new Error(`${splunkOtelPackageArtifact.name} was not found after extraction`);
+    throw new Error(`${splunkOtelArtifact.name} was not found after extraction`);
   }
 
-  if (workspaceTgzFiles.length === 0) {
+  // Extract workspace packages to temporary folder
+  const tempPackagesDir = 'temp-packages';
+  fs.mkdirSync(tempPackagesDir, { recursive: true });
+
+  const workspaceTempFile = 'workspace-package-artifact-temp.zip';
+  console.log(`writing workspace content to ${workspaceTempFile} and unzipping to ${tempPackagesDir}`);
+  fs.writeFileSync(workspaceTempFile, Buffer.from(workspaceArtifact.data));
+  execSync(`unzip -o ${workspaceTempFile} -d ${tempPackagesDir}`);
+
+  // Check that workspace packages were extracted
+  const workspaceFiles = fs.readdirSync(tempPackagesDir);
+  if (workspaceFiles.length === 0) {
     throw new Error('No .tgz files found in workspace packages');
   }
 
-  // Move workspace .tgz files to root directory
-  workspaceTgzFiles.forEach(file => {
+  // Move extracted workspace packages to root directory
+  workspaceFiles.forEach(file => {
     const srcPath = path.join(tempPackagesDir, file);
     const destPath = file;
     fs.renameSync(srcPath, destPath);
-    console.log(`Moved ${srcPath} to ${destPath}`);
   });
 
-  // Clean up temp directory
+  // Remove temporary files and folders
   fs.rmSync(tempPackagesDir, { recursive: true, force: true });
   fs.unlinkSync(splunkOtelTempFile);
   fs.unlinkSync(workspaceTempFile);
 
-  return [splunkOtelPackageArtifact.name, ...workspaceTgzFiles];
+  return [splunkOtelArtifact.name, ...workspaceFiles];
 }
 
 async function prepareReleaseArtifact() {
