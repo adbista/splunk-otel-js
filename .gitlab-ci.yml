@@ -21,7 +21,8 @@ oss-scan:
 
 release:
   before_script:
-    - export PACKAGE_ARG="--package=splunk-otel-${CI_COMMIT_REF_NAME:1}.tgz"
+    - export PACKAGE_FILE="splunk-otel-${CI_COMMIT_REF_NAME:1}.tgz"
+    - export PACKAGE_ARG="--package=${PACKAGE_FILE}"
   stage: release
   artifacts:
     paths:
@@ -32,13 +33,14 @@ release:
     - *prepare_dist
     - npm run release:github
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
-    - npm publish ./dist/splunk-otel-${CI_COMMIT_REF_NAME:1}.tgz
+    - npm publish ./dist/${PACKAGE_FILE}
     - rm -f ~/.npmrc
   when: manual
 
 esbuild-plugin-release:
   before_script:
-    - export PACKAGE_ARG="--package=splunk-otel-esbuild-plugin-node-${CI_COMMIT_REF_NAME:16}.tgz"
+    - export PACKAGE_FILE="splunk-otel-esbuild-plugin-node-${CI_COMMIT_REF_NAME:16}.tgz"
+    - export PACKAGE_ARG="--package=${PACKAGE_FILE}"
   stage: release
   artifacts:
     paths:
@@ -49,13 +51,14 @@ esbuild-plugin-release:
     - *prepare_dist
     - npm run release:github
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
-    - npm publish ./dist/splunk-otel-esbuild-plugin-node-${CI_COMMIT_REF_NAME:16}.tgz
+    - npm publish ./dist/${PACKAGE_FILE}
     - rm -f ~/.npmrc
   when: manual
 
 prerelease:
   before_script:
-    - export PACKAGE_ARG="--package=splunk-otel-${CI_COMMIT_REF_NAME:12}.tgz"
+    - export PACKAGE_FILE="splunk-otel-${CI_COMMIT_REF_NAME:12}.tgz"
+    - export PACKAGE_ARG="--package=${PACKAGE_FILE}"
   stage: release
   artifacts:
     paths:
@@ -65,13 +68,14 @@ prerelease:
   script:
     - *prepare_dist
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
-    - npm publish --tag prerelease ./dist/splunk-otel-${CI_COMMIT_REF_NAME:12}.tgz
+    - npm publish --tag prerelease ./dist/${PACKAGE_FILE}
     - rm -f ~/.npmrc
   when: manual
 
 esbuild-plugin-prerelease:
   before_script:
-    - export PACKAGE_ARG="--package=splunk-otel-esbuild-plugin-node-${CI_COMMIT_REF_NAME:27}.tgz"
+    - export PACKAGE_FILE="splunk-otel-esbuild-plugin-node-${CI_COMMIT_REF_NAME:27}.tgz"
+    - export PACKAGE_ARG="--package=${PACKAGE_FILE}"
   stage: release
   artifacts:
     paths:
@@ -81,6 +85,6 @@ esbuild-plugin-prerelease:
   script:
     - *prepare_dist
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
-    - npm publish --tag prerelease ./dist/splunk-otel-esbuild-plugin-node-${CI_COMMIT_REF_NAME:27}.tgz
+    - npm publish --tag prerelease ./dist/${PACKAGE_FILE}
     - rm -f ~/.npmrc
   when: manual
