@@ -15,12 +15,12 @@ const GITHUB_REPO = 'splunk-otel-js';
 // hash of the last commit. Used for artefact retrieval;
 // how to properly check it on my fork? 
 // 1. Create a new branch based on "feat/add-esbuild-plugin", perhaps named something like "test/ci-scripts-esbuild-plugin"
-// 2. Remove proper lines in ci.yml for security reasons
+// 2. Remove proper lines in ci.yml 
 // 3. create dummy commits and push to forked repo
 // for entire hash: git log --format="%H" -n 1
 // for description of last commit: git log --oneline -n 1
 // commit message: "..."
-const CI_COMMIT_SHA = '5c3db0cb248282feeb0f05e4d9fc14aa3d4689a4'; 
+const CI_COMMIT_SHA = '82ee940950cf61a588d64a521537a47d247f70a5';
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
@@ -68,7 +68,7 @@ async function waitForWorkflowRun(context) {
   }
 }
 
-async function downloadArtifact({ octokit, owner, repo, runId, artifactName }) {
+async function downloadArtifact(octokit, owner, repo, runId, artifactName) {
   const { data: artifacts } = await octokit.rest.actions.listWorkflowRunArtifacts({
     owner,
     repo,
@@ -133,26 +133,14 @@ async function getBuildArtifact() {
   
   if (targetFileName === tgzName) {
     // Download and extract main package artifact
-    const splunkOtelArtifact = await downloadArtifact({ 
-      octokit, 
-      owner, 
-      repo, 
-      runId: run.id, 
-      artifactName: tgzName 
-    });
+    const splunkOtelArtifact = await downloadArtifact(octokit,owner,repo,run.id,tgzName);
 
     const tempFile = 'artifact-temp.zip';
     return extractAndVerifyArtifact(splunkOtelArtifact, tempFile, targetFileName);
   } else {
     // Download and extract workspace packages artifact which contains all workspace packages
     const workspacePackageName = 'workspace-packages';
-    const workspaceArtifact = await downloadArtifact({ 
-      octokit, 
-      owner, 
-      repo, 
-      runId: run.id, 
-      artifactName: workspacePackageName 
-    });
+    const workspaceArtifact = await downloadArtifact(octokit,owner,repo,run.id,workspacePackageName);
 
     const workspaceTempFile = 'workspace-package-artifact-temp.zip';
     return extractAndVerifyArtifact(workspaceArtifact, workspaceTempFile, targetFileName);

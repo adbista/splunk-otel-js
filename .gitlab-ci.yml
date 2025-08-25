@@ -23,6 +23,7 @@ release:
   before_script:
     - export PACKAGE_FILE="splunk-otel-${CI_COMMIT_REF_NAME:1}.tgz"
     - export PACKAGE_ARG="--package=${PACKAGE_FILE}"
+    - export DIR_PACKAGE="--dir_package=../" # directory for package location
   stage: release
   artifacts:
     paths:
@@ -31,7 +32,7 @@ release:
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+.*/
   script:
     - *prepare_dist
-    - npm run release:github
+    - npm run release:github -- ${PACKAGE_ARG} ${DIR_PACKAGE}
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
     - npm publish ./dist/${PACKAGE_FILE}
     - rm -f ~/.npmrc
@@ -41,6 +42,7 @@ esbuild-plugin-release:
   before_script:
     - export PACKAGE_FILE="splunk-otel-esbuild-plugin-node-${CI_COMMIT_REF_NAME:16}.tgz"
     - export PACKAGE_ARG="--package=${PACKAGE_FILE}"
+    - export DIR_PACKAGE="--dir_package=../packages/otel-esbuild-plugin/"
   stage: release
   artifacts:
     paths:
@@ -49,7 +51,7 @@ esbuild-plugin-release:
     - if: $CI_COMMIT_TAG =~ /^esbuild-plugin-v[0-9]+\.[0-9]+\.[0-9]+.*/
   script:
     - *prepare_dist
-    - npm run release:github
+    - npm run release:github -- ${PACKAGE_ARG} ${DIR_PACKAGE}
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
     - npm publish ./dist/${PACKAGE_FILE}
     - rm -f ~/.npmrc
@@ -65,23 +67,6 @@ prerelease:
       - dist/
   rules:
     - if: $CI_COMMIT_TAG =~ /^prerelease-v[0-9]+\.[0-9]+\.[0-9]+(?:-.+)?$/
-  script:
-    - *prepare_dist
-    - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
-    - npm publish --tag prerelease ./dist/${PACKAGE_FILE}
-    - rm -f ~/.npmrc
-  when: manual
-
-esbuild-plugin-prerelease:
-  before_script:
-    - export PACKAGE_FILE="splunk-otel-esbuild-plugin-node-${CI_COMMIT_REF_NAME:27}.tgz"
-    - export PACKAGE_ARG="--package=${PACKAGE_FILE}"
-  stage: release
-  artifacts:
-    paths:
-      - dist/
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^esbuild-plugin-prerelease-v[0-9]+\.[0-9]+\.[0-9]+(?:-.+)?$/
   script:
     - *prepare_dist
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
