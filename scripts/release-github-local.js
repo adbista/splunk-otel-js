@@ -6,7 +6,7 @@ const { getReleaseMessage } = require('./release-message');
 
 async function createRelease() {
   
-  const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+ const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
   const args = process.argv.slice(2);
   let dirPackage = null;
   let packageArg = null;
@@ -18,7 +18,6 @@ async function createRelease() {
       packageArg = arg.split('=')[1];
     }
   }
-  
   const {
     data: { login },
   } = await octokit.rest.users.getAuthenticated();

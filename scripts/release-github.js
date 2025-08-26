@@ -39,7 +39,7 @@ async function createRelease() {
     owner,
     repo,
     tag_name: tag,
-    body: getReleaseMessage(),
+    body: getReleaseMessage(packageArg, dirPackageArg),
   });
   console.log(`Release created ${githubRelease.id}.`);
 

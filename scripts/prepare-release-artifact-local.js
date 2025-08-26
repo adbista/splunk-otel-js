@@ -95,19 +95,20 @@ async function downloadArtifact(octokit, owner, repo, runId, artifactName) {
   };
 }
 
-function extractAndVerifyArtifact(artifact, tempFileName, targetFile) {
-  console.log(`writing content to ${tempFileName} and unzipping`);
-  fs.writeFileSync(tempFileName, Buffer.from(artifact.data));
-  execSync(`unzip -o ${tempFileName}`);
-  
+function extractAndVerifyArtifact(artifact, targetFile) {
+  const tempFile = 'artifact-temp.zip';
+  console.log(`writing content to ${tempFile} and unzipping`);
+  fs.writeFileSync(tempFile, Buffer.from(artifact.data));
+  execSync(`unzip -o ${tempFile}`);
+
   const exists = fs.existsSync(targetFile);
   console.log(`${targetFile} was extracted: ${exists}`);
   
   if (!exists) {
     throw new Error(`Target file ${targetFile} was not found after extraction`);
   }
-  
-  fs.unlinkSync(tempFileName);
+
+  fs.unlinkSync(tempFile);
   return targetFile;
 }
 
@@ -133,17 +134,15 @@ async function getBuildArtifact() {
   
   if (targetFileName === tgzName) {
     // Download and extract main package artifact
-    const splunkOtelArtifact = await downloadArtifact(octokit,owner,repo,run.id,tgzName);
+    const splunkOtelArtifact = await downloadArtifact(octokit, owner, repo, run.id, tgzName);
 
-    const tempFile = 'artifact-temp.zip';
-    return extractAndVerifyArtifact(splunkOtelArtifact, tempFile, targetFileName);
+    return extractAndVerifyArtifact(splunkOtelArtifact, targetFileName);
   } else {
     // Download and extract workspace packages artifact which contains all workspace packages
     const workspacePackageName = 'workspace-packages';
-    const workspaceArtifact = await downloadArtifact(octokit,owner,repo,run.id,workspacePackageName);
+    const workspaceArtifact = await downloadArtifact(octokit, owner, repo, run.id, workspacePackageName);
 
-    const workspaceTempFile = 'workspace-package-artifact-temp.zip';
-    return extractAndVerifyArtifact(workspaceArtifact, workspaceTempFile, targetFileName);
+    return extractAndVerifyArtifact(workspaceArtifact, targetFileName);
   }
 }
 
